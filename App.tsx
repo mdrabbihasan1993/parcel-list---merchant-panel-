@@ -24,7 +24,8 @@ import {
   Printer,
   FileText,
   X,
-  Check
+  Check,
+  Copy
 } from 'lucide-react';
 import { INITIAL_PARCELS, BRAND_COLORS } from './constants';
 import { Parcel, ParcelStatus } from './types';
@@ -47,6 +48,27 @@ const CustomCheckbox: React.FC<{
     {checked && <Check size={14} strokeWidth={4} className="text-[#1a3762]" />}
   </button>
 );
+
+const CopyButton: React.FC<{ text: string }> = ({ text }) => {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <button 
+      onClick={handleCopy}
+      className="p-1 hover:bg-gray-100 rounded transition-colors text-gray-400 hover:text-[#1a3762] flex items-center justify-center"
+      title="Copy to clipboard"
+    >
+      {copied ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
+    </button>
+  );
+};
 
 const App: React.FC = () => {
   const [parcels] = useState<Parcel[]>(INITIAL_PARCELS);
@@ -253,7 +275,10 @@ const App: React.FC = () => {
                       </td>
                       <td className="px-6 py-4 text-xs text-gray-600 whitespace-nowrap">{parcel.date}</td>
                       <td className="px-6 py-4">
-                        <span className="font-mono text-sm font-bold text-[#1a3762]">{parcel.id}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-sm font-bold text-[#1a3762]">{parcel.id}</span>
+                          <CopyButton text={parcel.id} />
+                        </div>
                         <div className="text-[10px] text-gray-400 uppercase font-medium mt-1 tracking-tight">{parcel.weight}</div>
                       </td>
                       <td className="px-6 py-4">
@@ -263,7 +288,8 @@ const App: React.FC = () => {
                       <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap font-medium">
                         <div className="flex items-center gap-1.5">
                           <Phone size={13} className="text-gray-400" />
-                          {parcel.phone}
+                          <span>{parcel.phone}</span>
+                          <CopyButton text={parcel.phone} />
                         </div>
                       </td>
                       <td className="px-6 py-4 font-bold text-gray-700 whitespace-nowrap text-sm">
