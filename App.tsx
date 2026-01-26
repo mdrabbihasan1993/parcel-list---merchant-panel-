@@ -25,10 +25,11 @@ import {
   FileText,
   X,
   Check,
-  Copy
+  Copy,
+  CreditCard
 } from 'lucide-react';
 import { INITIAL_PARCELS, BRAND_COLORS } from './constants';
-import { Parcel, ParcelStatus } from './types';
+import { Parcel, ParcelStatus, PaymentStatus } from './types';
 import { StatCard } from './components/StatCard';
 
 const CustomCheckbox: React.FC<{ 
@@ -74,6 +75,7 @@ const App: React.FC = () => {
   const [parcels] = useState<Parcel[]>(INITIAL_PARCELS);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<ParcelStatus>('All');
+  const [filterPayment, setFilterPayment] = useState<PaymentStatus>('All');
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const menuRef = useRef<HTMLDivElement>(null);
@@ -94,10 +96,11 @@ const App: React.FC = () => {
         parcel.id.toLowerCase().includes(searchTerm.toLowerCase()) || 
         parcel.recipient.toLowerCase().includes(searchTerm.toLowerCase()) ||
         parcel.phone.includes(searchTerm);
-      const matchesFilter = filterStatus === 'All' || parcel.status === filterStatus;
-      return matchesSearch && matchesFilter;
+      const matchesStatus = filterStatus === 'All' || parcel.status === filterStatus;
+      const matchesPayment = filterPayment === 'All' || parcel.paymentStatus === filterPayment;
+      return matchesSearch && matchesStatus && matchesPayment;
     });
-  }, [searchTerm, filterStatus, parcels]);
+  }, [searchTerm, filterStatus, filterPayment, parcels]);
 
   const getStatusStyle = (status: Exclude<ParcelStatus, 'All'>) => {
     switch (status) {
@@ -111,6 +114,12 @@ const App: React.FC = () => {
       case 'Hold': return 'bg-rose-100 text-rose-700 border-rose-200';
       default: return 'bg-gray-100 text-gray-700 border-gray-200';
     }
+  };
+
+  const getPaymentStyle = (status: Exclude<PaymentStatus, 'All'>) => {
+    return status === 'Paid' 
+      ? 'bg-emerald-50 text-emerald-700 border-emerald-100' 
+      : 'bg-rose-50 text-rose-700 border-rose-100';
   };
 
   const getStatusIcon = (status: Exclude<ParcelStatus, 'All'>) => {
@@ -200,7 +209,7 @@ const App: React.FC = () => {
         </div>
 
         <div className="bg-white p-4 rounded-t-xl border border-gray-200 flex flex-col md:flex-row gap-4 items-center shadow-sm">
-          <div className="relative w-full md:w-96">
+          <div className="relative w-full md:w-80">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
             <input 
               type="text" 
@@ -210,14 +219,13 @@ const App: React.FC = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <div className="flex gap-2 w-full md:w-auto">
-            <div className="relative flex-1 md:w-56 text-sm">
+          <div className="flex flex-wrap gap-2 w-full md:w-auto">
+            <div className="relative flex-1 md:w-44 text-sm">
               <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
               <select 
                 className="w-full pl-10 pr-8 py-2.5 border border-gray-200 rounded-lg appearance-none bg-white text-gray-900 focus:outline-none focus:border-[#1a3762] cursor-pointer"
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value as ParcelStatus)}
-                style={{ backgroundColor: 'white' }}
               >
                 <option value="All">All Statuses</option>
                 <option value="Pending">Pending</option>
@@ -231,6 +239,21 @@ const App: React.FC = () => {
               </select>
               <ChevronRight className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 rotate-90 pointer-events-none" size={14} />
             </div>
+
+            <div className="relative flex-1 md:w-40 text-sm">
+              <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+              <select 
+                className="w-full pl-10 pr-8 py-2.5 border border-gray-200 rounded-lg appearance-none bg-white text-gray-900 focus:outline-none focus:border-[#1a3762] cursor-pointer"
+                value={filterPayment}
+                onChange={(e) => setFilterPayment(e.target.value as PaymentStatus)}
+              >
+                <option value="All">All Payments</option>
+                <option value="Paid">Paid Only</option>
+                <option value="Unpaid">Unpaid Only</option>
+              </select>
+              <ChevronRight className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 rotate-90 pointer-events-none" size={14} />
+            </div>
+
             <button className="p-2.5 border border-gray-200 rounded-lg bg-white hover:bg-gray-50 transition-colors shadow-sm">
               <ArrowUpDown size={20} className="text-gray-400" />
             </button>
@@ -257,6 +280,7 @@ const App: React.FC = () => {
                   <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">COD Charge</th>
                   <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">Type</th>
                   <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Payment</th>
                   <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Actions</th>
                 </tr>
               </thead>
@@ -311,6 +335,11 @@ const App: React.FC = () => {
                           {parcel.status}
                         </div>
                       </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full border text-[10px] font-bold uppercase tracking-wide transition-all ${getPaymentStyle(parcel.paymentStatus)}`}>
+                          {parcel.paymentStatus}
+                        </div>
+                      </td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-1 relative">
                           <button className="p-1.5 text-gray-400 hover:text-[#1a3762] hover:bg-[#1a376210] rounded-lg transition-all group-hover:scale-105">
@@ -344,10 +373,10 @@ const App: React.FC = () => {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={11} className="px-6 py-12 text-center text-gray-400 text-sm">
+                    <td colSpan={12} className="px-6 py-12 text-center text-gray-400 text-sm">
                       <div className="flex flex-col items-center gap-2">
                         <Package size={32} className="opacity-20" />
-                        <p>No parcels found matching your search.</p>
+                        <p>No parcels found matching your criteria.</p>
                       </div>
                     </td>
                   </tr>

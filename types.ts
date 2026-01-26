@@ -10,6 +10,8 @@ export type ParcelStatus =
   | 'Hold' 
   | 'All';
 
+export type PaymentStatus = 'Paid' | 'Unpaid' | 'All';
+
 export interface Parcel {
   id: string;
   recipient: string;
@@ -19,6 +21,7 @@ export interface Parcel {
   deliveryCharge: string;
   codCharge: string;
   status: Exclude<ParcelStatus, 'All'>;
+  paymentStatus: Exclude<PaymentStatus, 'All'>;
   date: string;
   weight: string;
   type: 'Standard' | 'Express' | 'Fragile';
