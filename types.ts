@@ -23,6 +23,7 @@ export interface Parcel {
   status: Exclude<ParcelStatus, 'All'>;
   paymentStatus: Exclude<PaymentStatus, 'All'>;
   date: string;
+  time?: string;
   weight: string;
   type: 'Standard' | 'Express' | 'Fragile';
 }

@@ -26,7 +26,10 @@ import {
   X,
   Check,
   Copy,
-  CreditCard
+  CreditCard,
+  Calendar,
+  ChevronDown,
+  Download
 } from 'lucide-react';
 import { INITIAL_PARCELS, BRAND_COLORS } from './constants';
 import { Parcel, ParcelStatus, PaymentStatus } from './types';
@@ -71,11 +74,144 @@ const CopyButton: React.FC<{ text: string }> = ({ text }) => {
   );
 };
 
+const DateRangePicker: React.FC<{
+  fromDate: string;
+  toDate: string;
+  onApply: (from: string, to: string) => void;
+  onClear: () => void;
+}> = ({ fromDate, toDate, onApply, onClear }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [localFrom, setLocalFrom] = useState(fromDate);
+  const [localTo, setLocalTo] = useState(toDate);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      setLocalFrom(fromDate);
+      setLocalTo(toDate);
+    }
+  }, [isOpen, fromDate, toDate]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const formatDateLabel = (date: string) => {
+    if (!date) return null;
+    return new Date(date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+  };
+
+  const handlePreset = (days: number) => {
+    const end = new Date();
+    const start = new Date();
+    start.setDate(end.getDate() - days);
+    
+    const startStr = start.toISOString().split('T')[0];
+    const endStr = end.toISOString().split('T')[0];
+    
+    setLocalFrom(startStr);
+    setLocalTo(endStr);
+  };
+
+  const triggerPicker = (e: React.MouseEvent<HTMLInputElement>) => {
+    try {
+      (e.currentTarget as any).showPicker();
+    } catch (err) {}
+  };
+
+  const handleApplyClick = () => {
+    onApply(localFrom, localTo);
+    setIsOpen(false);
+  };
+
+  const displayText = fromDate && toDate 
+    ? `${formatDateLabel(fromDate)} - ${formatDateLabel(toDate)}`
+    : (fromDate || toDate ? (fromDate ? `From ${formatDateLabel(fromDate)}` : `Until ${formatDateLabel(toDate)}`) : 'Select Date Range');
+
+  return (
+    <div className="relative" ref={containerRef}>
+      <button 
+        onClick={() => setIsOpen(!isOpen)}
+        className={`flex items-center gap-3 px-4 py-2.5 border rounded-lg bg-white text-sm font-medium transition-all shadow-sm min-w-[220px] justify-between ${
+          isOpen ? 'border-[#1a3762] ring-2 ring-[#1a376210]' : 'border-gray-200 hover:border-gray-300 text-gray-700'
+        }`}
+      >
+        <div className="flex items-center gap-2">
+          <Calendar size={16} className={fromDate || toDate ? 'text-[#1a3762]' : 'text-gray-400'} />
+          <span className={fromDate || toDate ? 'text-gray-900 font-bold' : 'text-gray-500'}>{displayText}</span>
+        </div>
+        <ChevronDown size={14} className={`text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+      </button>
+
+      {isOpen && (
+        <div className="absolute top-full left-0 mt-2 bg-white border border-gray-100 rounded-xl shadow-2xl p-5 z-[110] min-w-[340px] animate-in fade-in zoom-in duration-100 origin-top-left">
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <div>
+              <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1.5 tracking-wider">From Date</label>
+              <div className="relative">
+                <input 
+                  type="date" 
+                  value={localFrom}
+                  onChange={(e) => setLocalFrom(e.target.value)}
+                  onClick={triggerPicker}
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 bg-white focus:outline-none focus:border-[#1a3762] focus:ring-2 focus:ring-[#1a376210] cursor-pointer"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1.5 tracking-wider">To Date</label>
+              <div className="relative">
+                <input 
+                  type="date" 
+                  value={localTo}
+                  onChange={(e) => setLocalTo(e.target.value)}
+                  onClick={triggerPicker}
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm text-gray-900 bg-white focus:outline-none focus:border-[#1a3762] focus:ring-2 focus:ring-[#1a376210] cursor-pointer"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="border-t border-gray-100 pt-3 flex flex-wrap gap-2">
+            <button onClick={() => handlePreset(0)} className="px-3 py-1.5 text-[11px] font-semibold text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-full transition-colors">Today</button>
+            <button onClick={() => handlePreset(7)} className="px-3 py-1.5 text-[11px] font-semibold text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-full transition-colors">Last 7 Days</button>
+            <button onClick={() => handlePreset(30)} className="px-3 py-1.5 text-[11px] font-semibold text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-full transition-colors">Last 30 Days</button>
+            <button 
+              onClick={() => { 
+                setLocalFrom(''); setLocalTo(''); onClear(); setIsOpen(false); 
+              }}
+              className="px-3 py-1.5 text-[11px] font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded-full transition-colors ml-auto"
+            >
+              Clear
+            </button>
+          </div>
+          
+          <button 
+            onClick={handleApplyClick}
+            style={{ backgroundColor: BRAND_COLORS.DARK_BLUE }}
+            className="w-full mt-5 text-white py-3 rounded-lg text-sm font-bold hover:opacity-95 active:scale-[0.98] transition-all shadow-md shadow-blue-900/10 flex items-center justify-center gap-2"
+          >
+            <Check size={16} /> Apply Date Filter
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const App: React.FC = () => {
   const [parcels] = useState<Parcel[]>(INITIAL_PARCELS);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<ParcelStatus>('All');
   const [filterPayment, setFilterPayment] = useState<PaymentStatus>('All');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const menuRef = useRef<HTMLDivElement>(null);
@@ -90,6 +226,59 @@ const App: React.FC = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const getRelativeTime = (date: string, time?: string) => {
+    if (!time) return "Just now";
+    
+    const now = new Date();
+    const [timeStr, modifier] = time.split(' ');
+    let [hours, minutes] = timeStr.split(':').map(Number);
+    if (modifier === 'PM' && hours < 12) hours += 12;
+    if (modifier === 'AM' && hours === 12) hours = 0;
+
+    const parcelDate = new Date(date);
+    parcelDate.setHours(hours, minutes, 0, 0);
+
+    const diffInMs = now.getTime() - parcelDate.getTime();
+    const diffInHrs = Math.floor(diffInMs / (1000 * 60 * 60));
+
+    if (diffInHrs <= 0) return "0 Hours Ago";
+    if (diffInHrs < 24) return `${diffInHrs} Hours Ago`;
+    
+    const diffInDays = Math.floor(diffInHrs / 24);
+    return `${diffInDays} Day${diffInDays > 1 ? 's' : ''} Ago`;
+  };
+
+  const handleDownloadCSV = () => {
+    const selectedParcels = parcels.filter(p => selectedIds.has(p.id));
+    if (selectedParcels.length === 0) return;
+
+    const headers = ['ID', 'Recipient', 'Address', 'Phone', 'COD', 'Delivery Charge', 'COD Charge', 'Status', 'Payment', 'Date', 'Weight', 'Type'];
+    const rows = selectedParcels.map(p => [
+      p.id, 
+      `"${p.recipient}"`, 
+      `"${p.address.replace(/"/g, '""')}"`, 
+      p.phone, 
+      `"${p.cod}"`, 
+      `"${p.deliveryCharge}"`, 
+      `"${p.codCharge}"`, 
+      p.status, 
+      p.paymentStatus, 
+      p.date, 
+      p.weight, 
+      p.type
+    ]);
+
+    const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `parcel_batch_${new Date().getTime()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const filteredParcels = useMemo(() => {
     return parcels.filter(parcel => {
       const matchesSearch = 
@@ -98,9 +287,24 @@ const App: React.FC = () => {
         parcel.phone.includes(searchTerm);
       const matchesStatus = filterStatus === 'All' || parcel.status === filterStatus;
       const matchesPayment = filterPayment === 'All' || parcel.paymentStatus === filterPayment;
-      return matchesSearch && matchesStatus && matchesPayment;
+      
+      let matchesDate = true;
+      if (fromDate || toDate) {
+        const parcelDate = new Date(parcel.date);
+        if (fromDate) {
+          const start = new Date(fromDate);
+          start.setHours(0, 0, 0, 0);
+          if (parcelDate < start) matchesDate = false;
+        }
+        if (toDate) {
+          const end = new Date(toDate);
+          end.setHours(23, 59, 59, 999);
+          if (parcelDate > end) matchesDate = false;
+        }
+      }
+      return matchesSearch && matchesStatus && matchesPayment && matchesDate;
     });
-  }, [searchTerm, filterStatus, filterPayment, parcels]);
+  }, [searchTerm, filterStatus, filterPayment, fromDate, toDate, parcels]);
 
   const getStatusStyle = (status: Exclude<ParcelStatus, 'All'>) => {
     switch (status) {
@@ -136,94 +340,58 @@ const App: React.FC = () => {
     }
   };
 
-  const toggleMenu = (id: string) => {
-    setActiveMenuId(activeMenuId === id ? null : id);
-  };
-
-  const toggleSelectAll = () => {
-    if (filteredParcels.length > 0 && selectedIds.size === filteredParcels.length) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(filteredParcels.map(p => p.id)));
-    }
-  };
-
-  const toggleSelectOne = (id: string) => {
-    const next = new Set(selectedIds);
-    if (next.has(id)) {
-      next.delete(id);
-    } else {
-      next.add(id);
-    }
-    setSelectedIds(next);
-  };
-
-  const handlePrintLabels = () => {
-    alert(`Printing Labels for: ${Array.from(selectedIds).join(', ')}`);
-  };
-
-  const handlePrintInvoices = () => {
-    alert(`Generating Invoices for: ${Array.from(selectedIds).join(', ')}`);
-  };
-
   return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-8 font-sans text-gray-900 pb-24">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+    <div className="min-h-screen bg-gray-50 py-10 px-8 md:px-16 lg:px-24 xl:px-48 font-sans text-gray-900 pb-24 transition-all duration-300">
+      <div className="max-w-full mx-auto">
+        <div className="flex flex-col md:flex-row md:items-center justify-between mb-10 gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-              <Package className="text-[#1a3762]" />
+            <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-3">
+              <Package className="text-[#1a3762] w-8 h-8" />
               Logistics Parcel Dashboard
             </h1>
-            <p className="text-gray-500 text-sm">Track and manage your shipment lifecycle</p>
+            <p className="text-gray-500 text-sm mt-1">Real-time parcel tracking and shipping management console</p>
           </div>
           <button 
             style={{ backgroundColor: BRAND_COLORS.ORANGE }}
-            className="hover:opacity-90 text-white px-5 py-2.5 rounded-lg flex items-center justify-center gap-2 transition-all shadow-sm font-semibold text-sm active:scale-95"
+            className="hover:opacity-90 text-white px-6 py-3 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-orange-500/10 font-bold text-sm active:scale-95"
           >
-            <Plus size={18} strokeWidth={3} />
+            <Plus size={20} strokeWidth={3} />
             Add New Parcel
           </button>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
-          <StatCard label="Total Parcels" value={parcels.length} icon={<Package size={16} />} />
-          <StatCard 
-            label="Pending" 
-            value={parcels.filter(p => p.status === 'Pending' || p.status === 'Hold').length} 
-            icon={<Clock size={16} />} 
-            iconColorClass="text-yellow-400"
-          />
-          <StatCard 
-            label="In Transit" 
-            value={parcels.filter(p => p.status === 'In Transit' || p.status === 'Assigned for delivery' || p.status === 'At Sorting').length} 
-            icon={<Truck size={16} />} 
-            iconColorClass="text-blue-400"
-          />
-          <StatCard 
-            label="Delivered" 
-            value={parcels.filter(p => p.status === 'Delivered').length} 
-            icon={<CheckCircle size={16} />} 
-            iconColorClass="text-green-400"
-          />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+          <StatCard label="Total Shipments" value={parcels.length} icon={<Package size={18} />} />
+          <StatCard label="Hold Shipments" value={parcels.filter(p => p.status === 'Hold').length} icon={<PauseCircle size={18} />} iconColorClass="text-rose-500" />
+          <StatCard label="Active Transit" value={parcels.filter(p => p.status === 'In Transit' || p.status === 'Assigned for delivery' || p.status === 'At Sorting').length} icon={<Truck size={18} />} iconColorClass="text-blue-400" />
+          <StatCard label="Completed" value={parcels.filter(p => p.status === 'Delivered').length} icon={<CheckCircle size={18} />} iconColorClass="text-green-400" />
         </div>
 
-        <div className="bg-white p-4 rounded-t-xl border border-gray-200 flex flex-col md:flex-row gap-4 items-center shadow-sm">
-          <div className="relative w-full md:w-80">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+        {/* Filter Bar */}
+        <div className="bg-white p-5 rounded-t-2xl border border-gray-200 shadow-sm flex flex-col xl:flex-row gap-5 xl:items-center">
+          <div className="relative flex-shrink-0 w-full lg:w-80">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
             <input 
               type="text" 
-              placeholder="Search by ID, Name or Mobile..."
-              className="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-200 rounded-lg bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#1a376210] focus:border-[#1a3762] transition-all"
+              placeholder="Search by ID, Customer..."
+              className="w-full pl-11 pr-4 py-3 text-sm border border-gray-200 rounded-xl bg-gray-50/50 text-gray-900 focus:outline-none focus:ring-4 focus:ring-[#1a376208] focus:border-[#1a3762] transition-all"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <div className="flex flex-wrap gap-2 w-full md:w-auto">
-            <div className="relative flex-1 md:w-44 text-sm">
-              <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+
+          <DateRangePicker 
+            fromDate={fromDate} 
+            toDate={toDate} 
+            onApply={(f, t) => { setFromDate(f); setToDate(t); }} 
+            onClear={() => { setFromDate(''); setToDate(''); }}
+          />
+
+          <div className="flex flex-wrap gap-3 xl:ml-auto">
+            <div className="relative w-44 text-sm">
+              <Filter className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
               <select 
-                className="w-full pl-10 pr-8 py-2.5 border border-gray-200 rounded-lg appearance-none bg-white text-gray-900 focus:outline-none focus:border-[#1a3762] cursor-pointer"
+                className="w-full pl-11 pr-8 py-3 border border-gray-200 rounded-xl appearance-none bg-white text-gray-900 font-medium focus:outline-none focus:border-[#1a3762] cursor-pointer"
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value as ParcelStatus)}
               >
@@ -237,13 +405,13 @@ const App: React.FC = () => {
                 <option value="Hold">Hold</option>
                 <option value="Cancelled">Cancelled</option>
               </select>
-              <ChevronRight className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 rotate-90 pointer-events-none" size={14} />
+              <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={14} />
             </div>
 
-            <div className="relative flex-1 md:w-40 text-sm">
-              <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+            <div className="relative w-44 text-sm">
+              <CreditCard className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
               <select 
-                className="w-full pl-10 pr-8 py-2.5 border border-gray-200 rounded-lg appearance-none bg-white text-gray-900 focus:outline-none focus:border-[#1a3762] cursor-pointer"
+                className="w-full pl-11 pr-8 py-3 border border-gray-200 rounded-xl appearance-none bg-white text-gray-900 font-medium focus:outline-none focus:border-[#1a3762] cursor-pointer"
                 value={filterPayment}
                 onChange={(e) => setFilterPayment(e.target.value as PaymentStatus)}
               >
@@ -251,37 +419,41 @@ const App: React.FC = () => {
                 <option value="Paid">Paid Only</option>
                 <option value="Unpaid">Unpaid Only</option>
               </select>
-              <ChevronRight className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 rotate-90 pointer-events-none" size={14} />
+              <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={14} />
             </div>
 
-            <button className="p-2.5 border border-gray-200 rounded-lg bg-white hover:bg-gray-50 transition-colors shadow-sm">
+            <button className="p-3 border border-gray-200 rounded-xl bg-white hover:bg-gray-50 transition-colors shadow-sm">
               <ArrowUpDown size={20} className="text-gray-400" />
             </button>
           </div>
         </div>
 
-        <div className="bg-white border border-t-0 border-gray-200 rounded-b-xl overflow-visible shadow-sm">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead className="bg-gray-50 border-b border-gray-200">
+        {/* Table Module with Horizontal Scroll */}
+        <div className="bg-white border border-t-0 border-gray-200 rounded-b-2xl overflow-hidden shadow-xl shadow-gray-200/50">
+          <div className="overflow-x-auto scroll-smooth">
+            <table className="w-full text-left min-w-[1280px]">
+              <thead className="bg-gray-50/80 border-b border-gray-200">
                 <tr>
-                  <th className="px-6 py-4 w-4">
+                  <th className="px-6 py-5 w-4">
                     <CustomCheckbox 
                       checked={filteredParcels.length > 0 && selectedIds.size === filteredParcels.length}
-                      onChange={toggleSelectAll}
+                      onChange={() => {
+                        if (selectedIds.size === filteredParcels.length) setSelectedIds(new Set());
+                        else setSelectedIds(new Set(filteredParcels.map(p => p.id)));
+                      }}
                     />
                   </th>
-                  <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Created Date</th>
-                  <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Tracking ID</th>
-                  <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Recipient</th>
-                  <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Mobile Number</th>
-                  <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">COD Amount</th>
-                  <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Deliv. Charge</th>
-                  <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">COD Charge</th>
-                  <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">Type</th>
-                  <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Payment</th>
-                  <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Actions</th>
+                  <th className="px-6 py-5 text-xs font-bold text-gray-400 uppercase tracking-widest">Date Created</th>
+                  <th className="px-6 py-5 text-xs font-bold text-gray-400 uppercase tracking-widest">Shipment ID</th>
+                  <th className="px-6 py-5 text-xs font-bold text-gray-400 uppercase tracking-widest">Customer</th>
+                  <th className="px-6 py-5 text-xs font-bold text-gray-400 uppercase tracking-widest">Contact</th>
+                  <th className="px-6 py-5 text-xs font-bold text-gray-400 uppercase tracking-widest">COD Val</th>
+                  <th className="px-6 py-5 text-xs font-bold text-gray-400 uppercase tracking-widest text-right">Deliv Fee</th>
+                  <th className="px-6 py-5 text-xs font-bold text-gray-400 uppercase tracking-widest text-right">COD Fee</th>
+                  <th className="px-6 py-5 text-xs font-bold text-gray-400 uppercase tracking-widest text-center">Class</th>
+                  <th className="px-6 py-5 text-xs font-bold text-gray-400 uppercase tracking-widest">Lifecycle Status</th>
+                  <th className="px-6 py-5 text-xs font-bold text-gray-400 uppercase tracking-widest">Payment</th>
+                  <th className="px-6 py-5 text-xs font-bold text-gray-400 uppercase tracking-widest text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -289,94 +461,103 @@ const App: React.FC = () => {
                   filteredParcels.map((parcel) => (
                     <tr 
                       key={parcel.id} 
-                      className={`transition-colors group ${selectedIds.has(parcel.id) ? 'bg-[#1a376208]' : 'hover:bg-blue-50/20'}`}
+                      className={`transition-all duration-200 group ${selectedIds.has(parcel.id) ? 'bg-[#1a376205]' : 'hover:bg-blue-50/30'}`}
                     >
-                      <td className="px-6 py-4">
+                      <td className="px-6 py-5">
                         <CustomCheckbox 
                           checked={selectedIds.has(parcel.id)}
-                          onChange={() => toggleSelectOne(parcel.id)}
+                          onChange={() => {
+                            const next = new Set(selectedIds);
+                            if (next.has(parcel.id)) next.delete(parcel.id);
+                            else next.add(parcel.id);
+                            setSelectedIds(next);
+                          }}
                         />
                       </td>
-                      <td className="px-6 py-4 text-xs text-gray-600 whitespace-nowrap">{parcel.date}</td>
-                      <td className="px-6 py-4">
+                      <td className="px-6 py-5 whitespace-nowrap">
+                        <div className="flex flex-col gap-0.5">
+                          <div className="text-xs text-gray-600 font-bold tracking-tight">{parcel.date}</div>
+                          <div className="text-[10px] text-gray-500 font-medium">{parcel.time || '10:00 AM'}</div>
+                          <div className="text-[10px] text-gray-400 font-bold uppercase tracking-tight">
+                            {getRelativeTime(parcel.date, parcel.time)}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-5">
                         <div className="flex items-center gap-2">
-                          <span className="font-mono text-sm font-bold text-[#1a3762]">{parcel.id}</span>
+                          <span className="font-mono text-sm font-bold text-[#1a3762] tracking-tight">{parcel.id}</span>
                           <CopyButton text={parcel.id} />
                         </div>
-                        <div className="text-[10px] text-gray-400 uppercase font-medium mt-1 tracking-tight">{parcel.weight}</div>
+                        <div className="text-[10px] text-gray-400 font-bold mt-1.5 uppercase tracking-wider">{parcel.weight}</div>
                       </td>
-                      <td className="px-6 py-4">
-                        <p className="font-semibold text-gray-800 leading-tight text-sm">{parcel.recipient}</p>
-                        <p className="text-[11px] text-gray-500 truncate max-w-[120px] font-normal">{parcel.address}</p>
+                      <td className="px-6 py-5">
+                        <p className="font-bold text-gray-800 leading-tight text-sm">{parcel.recipient}</p>
+                        <p className="text-[11px] text-gray-400 truncate max-w-[150px] font-medium mt-0.5">{parcel.address}</p>
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap font-medium">
-                        <div className="flex items-center gap-1.5">
-                          <Phone size={13} className="text-gray-400" />
+                      <td className="px-6 py-5 text-sm text-gray-600 whitespace-nowrap font-semibold">
+                        <div className="flex items-center gap-2">
+                          <Phone size={14} className="text-gray-400" />
                           <span>{parcel.phone}</span>
                           <CopyButton text={parcel.phone} />
                         </div>
                       </td>
-                      <td className="px-6 py-4 font-bold text-gray-700 whitespace-nowrap text-sm">
-                        <div className="flex items-center gap-1.5">
-                          <Banknote size={14} className="text-green-600" />
+                      <td className="px-6 py-5 font-black text-gray-800 whitespace-nowrap text-sm">
+                        <div className="flex items-center gap-2">
+                          <Banknote size={16} className="text-green-500" />
                           {parcel.cod}
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap text-right font-medium">{parcel.deliveryCharge}</td>
-                      <td className="px-6 py-4 text-sm text-gray-600 whitespace-nowrap text-right font-medium">{parcel.codCharge}</td>
-                      <td className="px-6 py-4 text-center">
-                        <span className="px-2 py-0.5 text-[10px] font-bold border rounded bg-gray-50 text-gray-600 uppercase tracking-tighter">
+                      <td className="px-6 py-5 text-sm text-gray-600 whitespace-nowrap text-right font-bold">{parcel.deliveryCharge}</td>
+                      <td className="px-6 py-5 text-sm text-gray-600 whitespace-nowrap text-right font-bold">{parcel.codCharge}</td>
+                      <td className="px-6 py-5 text-center">
+                        <span className="px-2.5 py-1 text-[10px] font-black border rounded-md bg-gray-50 text-gray-500 uppercase tracking-tighter shadow-sm">
                           {parcel.type}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-[11px] font-semibold transition-all whitespace-nowrap ${getStatusStyle(parcel.status)}`}>
+                      <td className="px-6 py-5 whitespace-nowrap">
+                        <div className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border text-[11px] font-bold transition-all whitespace-nowrap shadow-sm ${getStatusStyle(parcel.status)}`}>
                           {getStatusIcon(parcel.status)}
                           {parcel.status}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full border text-[10px] font-bold uppercase tracking-wide transition-all ${getPaymentStyle(parcel.paymentStatus)}`}>
+                      <td className="px-6 py-5 whitespace-nowrap">
+                        <div className={`inline-flex items-center px-3 py-1 rounded-lg border text-[10px] font-black uppercase tracking-widest transition-all ${getPaymentStyle(parcel.paymentStatus)}`}>
                           {parcel.paymentStatus}
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex items-center justify-end gap-1 relative">
-                          <button className="p-1.5 text-gray-400 hover:text-[#1a3762] hover:bg-[#1a376210] rounded-lg transition-all group-hover:scale-105">
+                      <td className="px-6 py-5 text-right">
+                        <div className="flex items-center justify-end gap-1.5 relative">
+                          <button className="p-2 text-gray-400 hover:text-[#1a3762] hover:bg-[#1a376208] rounded-xl transition-all">
                             <ChevronRight size={18} />
                           </button>
-                          <div className="relative inline-block text-left">
-                            <button 
-                              onClick={() => toggleMenu(parcel.id)}
-                              className={`p-1.5 rounded transition-all ${activeMenuId === parcel.id ? 'bg-gray-100 text-[#1a3762]' : 'text-gray-400 hover:text-gray-600'}`}
-                            >
-                              <MoreVertical size={18} />
-                            </button>
-                            {activeMenuId === parcel.id && (
-                              <div ref={menuRef} className="absolute right-0 mt-2 w-36 rounded-lg bg-white shadow-xl border border-gray-100 py-1 z-50 animate-in fade-in zoom-in duration-75" style={{ transformOrigin: 'top right' }}>
-                                <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 transition-colors">
-                                  <Edit size={14} className="text-blue-500" /> Edit
-                                </button>
-                                <button className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 transition-colors">
-                                  <Trash2 size={14} className="text-red-500" /> Delete
-                                </button>
-                                <div className="border-t border-gray-100 my-1"></div>
-                                <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 transition-colors">
-                                  <MessageSquare size={14} className="text-orange-500" /> Complain
-                                </button>
-                              </div>
-                            )}
-                          </div>
+                          <button 
+                            onClick={() => setActiveMenuId(activeMenuId === parcel.id ? null : parcel.id)}
+                            className={`p-2 rounded-xl transition-all ${activeMenuId === parcel.id ? 'bg-gray-100 text-[#1a3762]' : 'text-gray-400 hover:text-gray-600'}`}
+                          >
+                            <MoreVertical size={18} />
+                          </button>
+                          {activeMenuId === parcel.id && (
+                            <div ref={menuRef} className="absolute right-0 mt-2 w-40 rounded-xl bg-white shadow-2xl border border-gray-100 py-1.5 z-50 animate-in fade-in zoom-in slide-in-from-top-2 duration-150 origin-top-right">
+                              <button className="w-full text-left px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-blue-50/50 flex items-center gap-3 transition-colors">
+                                <Edit size={14} className="text-blue-500" /> Edit Order
+                              </button>
+                              <button className="w-full text-left px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50 flex items-center gap-3 transition-colors">
+                                <Trash2 size={14} className="text-red-500" /> Void Ship.
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={12} className="px-6 py-12 text-center text-gray-400 text-sm">
-                      <div className="flex flex-col items-center gap-2">
-                        <Package size={32} className="opacity-20" />
-                        <p>No parcels found matching your criteria.</p>
+                    <td colSpan={12} className="px-6 py-20 text-center text-gray-400 text-sm">
+                      <div className="flex flex-col items-center gap-4">
+                        <div className="p-5 bg-gray-50 rounded-full">
+                          <Package size={48} className="opacity-10 text-[#1a3762]" />
+                        </div>
+                        <p className="font-semibold tracking-wide uppercase text-xs">No matching parcels found in directory</p>
                       </div>
                     </td>
                   </tr>
@@ -384,39 +565,42 @@ const App: React.FC = () => {
               </tbody>
             </table>
           </div>
-          <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
-            <p className="text-xs text-gray-500 uppercase font-medium tracking-wide">
-              Showing <span className="font-bold text-[#1a3762]">{filteredParcels.length}</span> results
+          <div className="px-8 py-5 bg-gray-50/50 border-t border-gray-200 flex items-center justify-between">
+            <p className="text-xs text-gray-400 uppercase font-black tracking-widest">
+              Filtered Matrix: <span className="text-[#1a3762]">{filteredParcels.length}</span> entries
             </p>
-            <div className="flex gap-2">
-              <button disabled className="px-4 py-1.5 text-xs border border-gray-300 rounded-lg bg-white text-gray-400 cursor-not-allowed font-semibold uppercase transition-colors">Previous</button>
-              <button className="px-4 py-1.5 text-xs border border-gray-300 rounded-lg bg-white text-[#1a3762] font-semibold hover:bg-gray-50 transition-colors uppercase">Next</button>
+            <div className="flex gap-3">
+              <button disabled className="px-5 py-2 text-xs border border-gray-200 rounded-xl bg-white text-gray-300 cursor-not-allowed font-bold uppercase tracking-widest">Prev</button>
+              <button className="px-5 py-2 text-xs border border-gray-200 rounded-xl bg-white text-[#1a3762] font-bold hover:bg-gray-50 transition-all uppercase tracking-widest shadow-sm">Next</button>
             </div>
           </div>
         </div>
 
         {selectedIds.size > 0 && (
-          <div className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-[#1a3762] text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-6 animate-in slide-in-from-bottom-10 duration-300 z-[100] border border-white/10">
-            <div className="flex items-center gap-3 pr-6 border-r border-white/20">
-              <span className="bg-white text-[#1a3762] w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">{selectedIds.size}</span>
-              <span className="text-sm font-medium whitespace-nowrap">Parcels Selected</span>
+          <div className="fixed bottom-10 left-1/2 -translate-x-1/2 bg-[#1a3762] text-white px-8 py-4 rounded-[2rem] shadow-2xl flex items-center gap-8 animate-in slide-in-from-bottom-12 duration-500 z-[100] border-2 border-white/20 backdrop-blur-md">
+            <div className="flex items-center gap-4 pr-8 border-r border-white/20">
+              <span className="bg-white text-[#1a3762] w-7 h-7 rounded-full flex items-center justify-center text-xs font-black shadow-inner">{selectedIds.size}</span>
+              <span className="text-sm font-bold tracking-wide uppercase">Batch Selection</span>
             </div>
-            <div className="flex items-center gap-2">
-              <button onClick={handlePrintLabels} className="flex items-center gap-2 px-4 py-2 hover:bg-white/10 rounded-full transition-colors text-sm font-semibold whitespace-nowrap">
-                <Printer size={18} className="text-[#ff751f]" /> Label Print
+            <div className="flex items-center gap-4">
+              <button onClick={handleDownloadCSV} className="flex items-center gap-2.5 px-5 py-2.5 hover:bg-white/10 rounded-full transition-all text-xs font-black uppercase tracking-widest group">
+                <Download size={18} className="text-blue-400 group-hover:scale-110 transition-transform" /> Download CSV
               </button>
-              <button onClick={handlePrintInvoices} className="flex items-center gap-2 px-4 py-2 hover:bg-white/10 rounded-full transition-colors text-sm font-semibold whitespace-nowrap">
-                <FileText size={18} className="text-[#ff751f]" /> Invoice Print
+              <button onClick={() => alert('Printing labels...')} className="flex items-center gap-2.5 px-5 py-2.5 hover:bg-white/10 rounded-full transition-all text-xs font-black uppercase tracking-widest group">
+                <Printer size={18} className="text-[#ff751f] group-hover:scale-110 transition-transform" /> Print Labels
+              </button>
+              <button onClick={() => alert('Generating invoices...')} className="flex items-center gap-2.5 px-5 py-2.5 hover:bg-white/10 rounded-full transition-all text-xs font-black uppercase tracking-widest group">
+                <FileText size={18} className="text-[#ff751f] group-hover:scale-110 transition-transform" /> Invoices
               </button>
             </div>
-            <button onClick={() => setSelectedIds(new Set())} className="ml-2 p-1.5 hover:bg-red-500 rounded-full transition-all">
-              <X size={18} />
+            <button onClick={() => setSelectedIds(new Set())} className="ml-2 p-1.5 hover:bg-red-500 rounded-full transition-all active:rotate-90">
+              <X size={20} />
             </button>
           </div>
         )}
 
-        <div className="mt-8 text-center pb-8">
-            <p className="text-[10px] text-gray-400 uppercase tracking-[0.2em] font-medium">Logistics Intelligence System • Stable Build v2.5.0</p>
+        <div className="mt-12 text-center pb-10">
+          <p className="text-[10px] text-gray-300 uppercase tracking-[0.4em] font-black">Secure Merchant Gateway • Logistics Core v3.0.1</p>
         </div>
       </div>
     </div>
